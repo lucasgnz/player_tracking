@@ -3,7 +3,9 @@ Pour lancer le tracker sur la vidéo test:
 
 Aller dans deepsort/
 
-Executer:
+Executer: 
+
+
 python deep_sort_app.py \
     --sequence_dir=../data/ajax_chelsea \
     --detection_file=./resources/detections/foot/ajax_chelsea.npy \
