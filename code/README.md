@@ -1,5 +1,8 @@
 Pour lancer le tracker sur la vidéo test:
 
+Télécharger le dossier data et le mettre dans code/
+Lien: https://drive.google.com/open?id=1MCOxtcvjnZD5geNvFB-hPbz4jpsJkWJJ
+
 
 Aller dans deepsort/
 
