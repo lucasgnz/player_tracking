@@ -10,8 +10,10 @@ Appeler les scripts dans main.py dans l'ordre suivant (les différentes sorties 
 
 3. A) DEEP SORT + CLUSTERING A POSTERIORI
     a. Deep Sort (génère un fichier data/nom_de_la_video/det_ds/det.txt)
-    b. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det_ds_pc/det.txt)
-    
-    OU B) DEEP SORT LIMIT (version modifiée de Deep Sort limitant le nombre total d'identifiants générés)
+    b. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det_ds_pc/det.txt) 
+
+OU
+
+3. B) DEEP SORT LIMIT (version modifiée de Deep Sort limitant le nombre total d'identifiants générés)
 
 4. Visualiser le résultat en vidéo
