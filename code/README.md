@@ -22,8 +22,10 @@ OU
 
 
 3. B) DEEP SORT LIMIT (version modifiée de Deep Sort limitant le nombre total d'identifiants générés)
+        génère un fichier data/nom_de_la_video/det_ds_l/det.txt
 
 
 
 
 4. Visualiser le résultat en vidéo
+        La visualisation prend en entrée un fichier det.txt
