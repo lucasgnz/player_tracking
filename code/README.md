@@ -1,17 +1,17 @@
-Pour lancer le tracker sur la vidéo test:
+Pour faire un tracking sur une nouvelle vidéo, il suffit d'appeler main.py pour faire tourner les différents modules / étapes qui sont activées ou désactivées manuellement dans main.py (par des if True: ou if False:).
 
-Télécharger le dossier data et le mettre dans code/
-Lien: https://drive.google.com/open?id=1MCOxtcvjnZD5geNvFB-hPbz4jpsJkWJJ
+Placer les images dans data/nom_de_la_video/img1/frameX.jpg, ou X est le numéro de la frame.
 
+Appeler les scripts dans main.py dans l'ordre suivant (les différentes sorties des modules sont utilisées en entrées dans les suivants):
 
-Aller dans deepsort/
+1. Générer les détections à partir des images (génère un fichier data/nom_de_la_video/det/det.txt)
 
-Executer: 
+2. Extraires les features à partir de ces détections (génère un fichier deep_sort/resources/detections/foot/nom_de_la_video_det.npy)
 
+3. A) DEEP SORT + CLUSTERING A POSTERIORI
+    a. Deep Sort (génère un fichier data/nom_de_la_video/det_ds/det.txt)
+    b. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det_ds_pc/det.txt)
+    
+    OU B) DEEP SORT LIMIT (version modifiée de Deep Sort limitant le nombre total d'identifiants générés)
 
-python deep_sort_app.py \
-    --sequence_dir=../data/ajax_chelsea \
-    --detection_file=./resources/detections/foot/ajax_chelsea.npy \
-    --min_confidence=0.3 \
-    --nn_budget=100 \
-    --display=True
+4. Visualiser le résultat en vidéo
