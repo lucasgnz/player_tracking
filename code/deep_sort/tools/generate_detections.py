@@ -5,6 +5,8 @@ import argparse
 import numpy as np
 import cv2
 import tensorflow as tf
+import mmcv
+from mmskeleton.apis import init_pose_estimator, inference_pose_estimator
 
 
 def _run_in_batches(f, data_dict, out, batch_size):
@@ -88,10 +90,19 @@ class ImageEncoder(object):
         self.image_shape = self.input_var.get_shape().as_list()[1:]
 
     def __call__(self, data_x, batch_size=32):
-        out = np.zeros((len(data_x), self.feature_dim), np.float32)
+        out_dad = np.zeros((len(data_x), self.feature_dim), np.float32)
         _run_in_batches(
             lambda x: self.session.run(self.output_var, feed_dict=x),
-            {self.input_var: data_x}, out, batch_size)
+            {self.input_var: data_x}, out_dad, batch_size)
+
+        #ADD OTHER FEATURES HERE
+        cfg = mmcv.Config.fromfile('configs/apis/pose_estimator.cascade_rcnn+hrnet.yaml')
+        model = init_pose_estimator(**cfg, device=0)
+        out_ = np.zeros((len(data_x), self.feature_dim), np.float32)
+        for i in range(len(data_x)):
+            out_[i,:] = inference_pose_estimator(model, i)
+
+        out = np.concatenate((out_dad,out_), axis=1)
         return out
 
 
@@ -115,7 +126,7 @@ def create_box_encoder(model_filename, input_name="images",
     return encoder
 
 
-def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
+def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', detection_dir=None):
     """Generate detections with features.
 
     Parameters
@@ -134,6 +145,7 @@ def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
         standard MOTChallenge detections.
 
     """
+
     if detection_dir is None:
         detection_dir = mot_dir
     try:
@@ -152,11 +164,11 @@ def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
 
             image_dir = os.path.join(sequence_dir, "img1")
             image_filenames = {
-                int(os.path.splitext(f.replace("frame",""))[0]): os.path.join(image_dir, f)
+                int(os.path.splitext(f.replace("frame",""))[0])-offset: os.path.join(image_dir, f)
                 for f in os.listdir(image_dir)}
 
             detection_file = os.path.join(
-                detection_dir, sequence, "det/det.txt")
+                detection_dir, sequence, det_stage+"/det.txt")
             detections_in = np.loadtxt(detection_file, delimiter=',')
             detections_out = []
 
@@ -164,7 +176,9 @@ def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
             min_frame_idx = frame_indices.astype(np.int).min()
             max_frame_idx = frame_indices.astype(np.int).max()
             for frame_idx in range(min_frame_idx, max_frame_idx + 1):
-                print("Frame %05d/%05d" % (frame_idx, max_frame_idx))
+                aaa = int((max_frame_idx - min_frame_idx)/ 100)
+                if (frame_idx - min_frame_idx ) % aaa == 0:
+                    print("Processing frame {} / {}".format(frame_idx, max_frame_idx))
                 mask = frame_indices == frame_idx
                 rows = detections_in[mask]
 
@@ -180,7 +194,7 @@ def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
                 detections_out += [np.r_[(row, feature)] for row, feature
                                    in zip(rows, features)]
 
-            output_filename = os.path.join(output_dir, "%s.npy" % sequence)
+            output_filename = os.path.join(output_dir, "{}_{}.npy".format(sequence, det_stage))
             np.save(
                 output_filename, np.asarray(detections_out), allow_pickle=False)
 
@@ -197,6 +211,10 @@ def parse_args():
         "--mot_dir", help="Path to MOTChallenge directory (train or test)",
         required=True)
     parser.add_argument(
+        "--offset", help="Frame offset. Default to 0", default=0)
+    parser.add_argument(
+        "--det_stage", help="Detection stage name", default='det')
+    parser.add_argument(
         "--detection_dir", help="Path to custom detections. Defaults to "
         "standard MOT detections Directory structure should be the default "
         "MOTChallenge structure: [sequence]/det/det.txt", default=None)
@@ -209,7 +227,7 @@ def parse_args():
 def main():
     args = parse_args()
     encoder = create_box_encoder(args.model, batch_size=32)
-    generate_detections(encoder, args.mot_dir, args.output_dir,
+    generate_detections(encoder, args.mot_dir, args.output_dir, int(args.offset), args.det_stage,
                         args.detection_dir)
 
 
