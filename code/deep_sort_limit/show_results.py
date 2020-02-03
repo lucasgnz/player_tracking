@@ -34,21 +34,16 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
         If not None, a video of the tracking results is written to this file.
 
     """
+    seq_info = deep_sort_app.gather_sequence_info(sequence_dir, detection_file, offset)
     results = np.loadtxt(result_file, delimiter=',')
-
-    n_frames = results[:, 0].max() - results[:, 0].min()
-
-    seq_info = deep_sort_app.gather_sequence_info(sequence_dir, detection_file, offset, n_frames)
 
     if show_false_alarms and seq_info["groundtruth"] is None:
         raise ValueError("No groundtruth available. Cannot show false alarms.")
 
     def frame_callback(vis, frame_idx):
-        aaa = n_frames / 10
-        if frame_idx % aaa == 0:
-            print("Showing frame {} / {}".format(frame_idx, n_frames))
-
-        image = cv2.imread(seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
+        print("Frame idx", frame_idx)
+        image = cv2.imread(
+            seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
 
         vis.set_image(image.copy())
 

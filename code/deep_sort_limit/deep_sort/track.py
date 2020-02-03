@@ -73,6 +73,7 @@ class Track:
         self.time_since_update = 0
 
         self.state = TrackState.Tentative
+        #self.state = TrackState.Confirmed
         self.features = []
         self.last_f = [0 for _ in range(128)]
         if feature is not None:
@@ -144,7 +145,7 @@ class Track:
             self.mean, self.covariance, detection.to_xyah())
         self.features.append(detection.feature)
         self.last_f = detection.feature
-        if(len(self.features)>100):#we only keep the last 100 feature vectors
+        if (len(self.features) > 100):#we only keep the last 100 feature vectors
             self.features.pop(0)
 
         self.hits += 1

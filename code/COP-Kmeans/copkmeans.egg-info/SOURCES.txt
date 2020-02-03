@@ -1,0 +1,10 @@
+README.md
+setup.py
+copkmeans/__init__.py
+copkmeans/cop_kmeans.py
+copkmeans/run_ckm.py
+copkmeans.egg-info/PKG-INFO
+copkmeans.egg-info/SOURCES.txt
+copkmeans.egg-info/dependency_links.txt
+copkmeans.egg-info/not-zip-safe
+copkmeans.egg-info/top_level.txt

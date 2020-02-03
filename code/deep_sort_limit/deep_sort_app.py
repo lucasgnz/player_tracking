@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 
 import argparse
 import os
-import csv
+
 import cv2
 import numpy as np
 
@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
+def gather_sequence_info(sequence_dir, detection_file, offset, n_frames):
     """Gather sequence information, such as image filenames, detections,
     groundtruth (if available).
 
@@ -49,7 +49,7 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
         for f in os.listdir(image_dir)}
     groundtruth_file = os.path.join(sequence_dir, "gt/gt.txt")
 
-    todel = []
+    todel=[]
     for k in image_filenames.keys():
         if k >= n_frames:
             todel.append(k)
@@ -139,7 +139,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init):
+        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init, max_tracks, metric_param):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -170,8 +170,8 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     """
     seq_info = gather_sequence_info(sequence_dir, detection_file, offset, n_frames)
     metric = nn_matching.NearestNeighborDistanceMetric(
-        "cosine", max_cosine_distance, nn_budget)
-    tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init)
+        "cosine_custom", max_cosine_distance, nn_budget)
+    tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init, max_tracks=max_tracks, metric_param=metric_param)
     results = []
 
     def frame_callback(vis, frame_idx):
@@ -190,7 +190,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         indices = preprocessing.non_max_suppression(
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
-
+        #print(len(detections))
         # Update tracker.
         tracker.predict()
         tracker.update(detections)
@@ -200,7 +200,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             image = cv2.imread(
                 seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
             vis.set_image(image.copy())
-            vis.draw_detections(detections)
+            #vis.draw_detections(detections)
             vis.draw_trackers(tracker.tracks)
 
         # Store results.
@@ -209,7 +209,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                 continue
             bbox = track.to_tlwh()
             results.append([
-                frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3], 1, -1, -1, -1] + list(track.last_feature()))
+                frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
 
     # Run tracker.
     if display:
@@ -219,14 +219,18 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     visualizer.run(frame_callback)
 
     # Store results.
+    #Reorder from 1 to n_tracks:
+    ids = list(np.unique(np.array(results)[:,1]))
+    print(len(ids), ids)
     f = open(output_file, 'w')
-    w = csv.writer(f,delimiter=',')
-    w.writerows(results)
+    for row in list(results):
+        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
+            row[0], ids.index(row[1]), row[2], row[3], row[4], row[5]),file=f)
 
 
 def bool_string(input_string):
     if input_string not in {"True","False"}:
-        raise ValueError("Please Enter a valid Ture/False choice")
+        raise ValueError("Please Enter a valid True/False choice")
     else:
         return (input_string == "True")
 
@@ -239,6 +243,7 @@ def parse_args():
         default=None, required=True)
     parser.add_argument(
         "--offset", help="Frame offset. Default to 0", default=0)
+
     parser.add_argument(
         "--n_frames", help="Number of frames. Default to 1000", default=1000)
     parser.add_argument(
@@ -257,10 +262,16 @@ def parse_args():
         default=0.7, type=float)
     parser.add_argument(
         "--max_age", help="Maximum age of tracklets",
-        default=50, type=int)
+        default=5000, type=int)
     parser.add_argument(
         "--n_init", help="Number of frames needed for initialization of a tracklet",
-        default=50, type=int)
+        default=10, type=int)
+    parser.add_argument(
+        "--max_tracks", help="Maximum number of tracklets",
+        default=10, type=int)
+    parser.add_argument(
+        "--metric_param", help="Importance of Mahalanobis distance in combined metric",
+        default=0.0, type=float)
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
@@ -285,4 +296,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init))
+        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init), int(args.max_tracks), args.metric_param)

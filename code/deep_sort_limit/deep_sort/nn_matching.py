@@ -101,6 +101,13 @@ def _cosine_distance_mean(x, y):
     distances = _cosine_distance(x, y)
     return distances.mean(axis=0)
 
+def _cosine_distance_custom(x, y):
+    """ Helper function for  distance metric (cosine).
+    """
+    alpha = 1
+    distances = _cosine_distance(x, y)
+    return alpha*distances.mean(axis=0) + (1-alpha)*distances.min(axis=0)
+
 
 class NearestNeighborDistanceMetric(object):
     """
@@ -135,6 +142,8 @@ class NearestNeighborDistanceMetric(object):
             self._metric = _nn_cosine_distance
         elif metric == "cosine_mean":
             self._metric = _cosine_distance_mean
+        elif metric == "cosine_custom":
+            self._metric = _cosine_distance_custom
         else:
             raise ValueError(
                 "Invalid metric; must be either 'euclidean' or 'cosine'")
@@ -159,6 +168,7 @@ class NearestNeighborDistanceMetric(object):
             self.samples.setdefault(target, []).append(feature)
             if self.budget is not None:
                 self.samples[target] = self.samples[target][-self.budget:]
+
         self.samples = {k: self.samples[k] for k in active_targets}
 
     def distance(self, features, targets):
@@ -181,5 +191,5 @@ class NearestNeighborDistanceMetric(object):
         """
         cost_matrix = np.zeros((len(targets), len(features)))
         for i, target in enumerate(targets):
-            cost_matrix[i, :] = self._metric(self.samples[target], features)
+                cost_matrix[i, :] = self._metric(self.samples[target], features)
         return cost_matrix
