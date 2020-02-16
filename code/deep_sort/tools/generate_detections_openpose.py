@@ -9,10 +9,6 @@ import mmcv
 import json
 import math
 
-from op_lomo_extractor import op_lomo_extractor
-from sklearn.preprocessing import normalize
-from scipy.optimize import linear_sum_assignment
-
 def _run_in_batches(f, data_dict, out, batch_size):
     data_len = len(out)
     num_batches = int(data_len / batch_size)
@@ -133,7 +129,7 @@ def create_box_encoder(model_filename, input_name="images",
     return encoder
 
 
-def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', detection_dir=None, openpose='', alpha_op=0, lomo_config=''):
+def generate_detections(encoder, mot_dir, output_dir, offset, openpose=''):
     """Generate detections with features.
 
     Parameters
@@ -152,11 +148,7 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
         standard MOTChallenge detections.
 
     """
-    with open(lomo_config, 'r') as f:
-        lomo_config = json.load(f)
 
-    if detection_dir is None:
-        detection_dir = mot_dir
     try:
         os.makedirs(output_dir)
     except OSError as exception:
@@ -176,28 +168,14 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
                 int(os.path.splitext(f.replace("frame",""))[0])-offset: os.path.join(image_dir, f)
                 for f in os.listdir(image_dir)}
 
-            detection_file = os.path.join(
-                detection_dir, sequence, "det/det.txt")
-            detections_in = np.loadtxt(detection_file, delimiter=',')
             detections_out = []
 
-            frame_indices = detections_in[:, 0].astype(np.int)
-            min_frame_idx = frame_indices.astype(np.int).min()
-            max_frame_idx = frame_indices.astype(np.int).max()
-
             n_str_frame = 0
-
-            def str_frame(n):
-                str_frame = ""
-                for _ in range(n): str_frame += "0"
-                return str_frame
-
-            for frame_idx in range(min_frame_idx, max_frame_idx + 1):
-                aaa = int((max_frame_idx - min_frame_idx + 1)/ 100)
-                if (frame_idx - min_frame_idx ) % aaa == 0:
+            max_frame_idx = len(image_filenames) - 1
+            for frame_idx in range(0, max_frame_idx + 1):
+                aaa = int((max_frame_idx + 1)/ 100)
+                if frame_idx % aaa == 0:
                     print("Processing frame {} / {}".format(frame_idx, max_frame_idx))
-                mask = frame_indices == frame_idx
-                rows = detections_in[mask]
 
                 if frame_idx not in image_filenames:
                     print("WARNING could not find image for frame %d" % frame_idx)
@@ -209,85 +187,58 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
                 height = bgr_image.shape[0]
                 #####
 
-                if openpose != '':
-                ### ADD OPEN POSE FEATURES to rows
-                    if frame_idx == min_frame_idx:
-                        while not os.path.exists(os.path.join(sequence_dir,openpose,sequence+"_" + str_frame(n_str_frame) + str(frame_idx+offset)+"_keypoints.json")) and n_str_frame<30:
-                            n_str_frame += 1
-                        if n_str_frame==30:
-                            print("Could not find openpose data")
-                            exit()
-                    def log(n):
-                        if n == 0:
-                            return 0
-                        else:
-                            return math.floor(math.log(n, 10))
+                def str_frame(n):
+                    str_frame = ""
+                    for _ in range(n): str_frame += "0"
+                    return str_frame
 
-                    def contains(det, kp):
-                        #Returns true if 'kp' is contained in the detection box 'det'
-                        return (det[0] < kp[0]) and (kp[0] < det[0] + det[2]) and (det[1] < kp[1]) and kp[1] < (det[1] + det[3])
-                    def n_keypoints(det, keypoints):
-                        #Returns the confidence mean score of the keypoints of 'kp' that are contained in the detection box 'det'
-                        return sum([kp[2] if (contains(det, kp)) else 0 for kp in keypoints])
 
-                    with open(os.path.join(sequence_dir, openpose, sequence+"_" + str_frame(n_str_frame - (log(frame_idx+offset) - log(min_frame_idx+offset))) + str(frame_idx+offset) + "_keypoints.json")) as json_file:
-                        openpose_data = json.load(json_file)
-                        cost = []#Cost matrix for the assignment problem openPose people => detections obtained by the detector
-                        keypoints_ = []
-                        bbox_ = []
-                        for p in openpose_data ['people']:
-                            keypoints = np.array(p["pose_keypoints_2d"]).reshape((-1,3))
-                            keypoints[:, 0] += 1
-                            keypoints[:, 0] *= width / 2
-                            keypoints[:, 1] += 1
-                            keypoints[:, 1] *= height / 2
+                rows = []
+                ### OPEN POSE DATA
+                if frame_idx == 0:
+                    while not os.path.exists(os.path.join(sequence_dir,openpose,sequence+"_" + str_frame(n_str_frame) + str(frame_idx+offset)+"_keypoints.json")) and n_str_frame<30:
+                        n_str_frame += 1
+                    if n_str_frame==30:
+                        print("Could not find openpose data")
+                        exit()
 
-                            """
-                            keypoints_conf = np.array(
-                                [kp for kp in list(keypoints) if kp[2] > 0.1 and not (kp[0] == -1.0 and kp[1] == -1.0)])
+                def log(n):
+                    if n == 0:
+                        return 0
+                    else:
+                        return math.floor(math.log(n, 10))
+
+                with open(os.path.join(sequence_dir, openpose, sequence + "_" + str_frame(
+                        n_str_frame - log(frame_idx + offset) + log(offset)) + str(
+                        frame_idx + offset) + "_keypoints.json")) as json_file:
+                    openpose_data = json.load(json_file)
+                    #print("Players :", len(openpose_data['people']))
+                    for p in openpose_data['people']:
+                        keypoints = np.array(p["pose_keypoints_2d"]).reshape((-1, 3))
+                        keypoints = np.array(
+                            [kp for kp in list(keypoints) if kp[2] > 0.1 and not (kp[0] == -1.0 and kp[1] == -1.0)])
+                        if keypoints.shape[0] >= 1:
+                            #print("Keypoints: ", keypoints.shape[0])
+                            bbox_center = [
+                                  (np.mean(keypoints[:, 0]) + 1) / 2 * width,
+                                  (np.mean(keypoints[:, 0]) + 1) / 2 * height]
 
                             bbox = [
-                                (np.min(keypoints_conf[:, 0])),
-                                (np.min(keypoints_conf[:, 1])),
-                                (np.max(keypoints_conf[:, 0])),
-                                (np.max(keypoints_conf[:, 1]))]
+                                  (np.min(keypoints[:, 0]) + 1) / 2 * width,
+                                  (np.min(keypoints[:, 1]) + 1) / 2 * height,
+                                  (np.max(keypoints[:, 0]) + 1) / 2 * width,
+                                  (np.max(keypoints[:, 1]) + 1) / 2 * height]
                             bbox[2] -= bbox[0]
                             bbox[3] -= bbox[1]
-                            bbox_.append(bbox)"""
-
-
-
-                            cost.append([-n_keypoints(det, keypoints) for det in rows[:, 2:6]])
-
-
-                            keypoints_features, conf = op_lomo_extractor(keypoints, lomo_config, bgr_image)
-                            keypoints_.append(keypoints_features)
-
-
-                        n_op_lomo_features = keypoints_[0].shape[0]
-                        _, col_ind = linear_sum_assignment(cost)
-                        rows_ = np.concatenate((rows, np.ones((rows.shape[0], n_op_lomo_features))/n_op_lomo_features), axis=1)
-
-                        for j,i in enumerate(col_ind):
-                            rows_[i, rows.shape[1]:] = keypoints_[j]
-                            #print(rows[i,2:6], bbox_[j], keypoints_[j][2::3].max())
-
-                        rows_[:, rows.shape[1]:] = normalize(rows_[:, rows.shape[1]:]) * alpha_op * conf
-
-                        rows_ = np.array(rows_)
-
-
-                    ##END OPEN POSE FEATURES
-                else:
-                    rows_ = rows
-
+                            rows.append([frame_idx, -1] + bbox + [np.mean(keypoints[:, 2]), -1, -1, -1])
 
                 #####
-                features = encoder(bgr_image, rows_[:, 2:6].copy()) ##ADD DEEPSORT FEATURES
-                detections_out += [np.r_[(row, feature * np.sqrt(1 - (alpha_op * conf)**2))] for row, feature
-                                   in zip(rows_, features)]
+                rows = np.array(rows)
+                features = encoder(bgr_image, rows[:, 2:6].copy())
+                detections_out += [np.r_[(row, feature)] for row, feature
+                                   in zip(rows, features)]
 
-            output_filename = os.path.join(output_dir, "{}_{}.npy".format(sequence, det_stage))
+            output_filename = os.path.join(output_dir, "{}_{}.npy".format(sequence, "detbyop"))
             np.save(
                 output_filename, np.asarray(detections_out), allow_pickle=False)
 
@@ -308,12 +259,7 @@ def parse_args():
     parser.add_argument(
         "--openpose", help="RELATIVE path to openpose features. Default to empty string (openpose features are not used in this case)", default='')
     parser.add_argument(
-        "--alpha_op",
-        help="Weight of openpose features. Default to 0.0", default=0.0)
-    parser.add_argument(
-        "--det_stage", help="Detection stage id", default='det')
-    parser.add_argument(
-        "--lomo_config", help="Path to LOMO config file (.json)", default='')
+        "--det_stage", help="Detection stage id", default='detbyop')
     parser.add_argument(
         "--detection_dir", help="Path to custom detections. Defaults to "
         "standard MOT detections Directory structure should be the default "
@@ -327,8 +273,7 @@ def parse_args():
 def main():
     args = parse_args()
     encoder = create_box_encoder(args.model, batch_size=32)
-    generate_detections(encoder, args.mot_dir, args.output_dir, int(args.offset), args.det_stage,
-                        args.detection_dir, args.openpose, float(args.alpha_op), args.lomo_config)
+    generate_detections(encoder, args.mot_dir, args.output_dir, int(args.offset), args.openpose)
 
 
 if __name__ == "__main__":

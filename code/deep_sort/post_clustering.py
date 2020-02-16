@@ -114,7 +114,9 @@ def run(input_file, output_file, max_common_frames, n_clusters):
     centers_ids_init=ids_by_frames[ref_frame]
     centers_init = [list(data[:,1]).index(i) for i in centers_ids_init]
 
-
+    ids = list(np.unique(data[:, 1]))
+    if (len(ids) < n_clusters):
+        n_clusters = len(ids)
     clusters, centers = cop_kmeans(dataset=data[:,2:], initialization=centers_init,  k=n_clusters, ml=must_link, cl=cannot_link, spherical=True)
 
 

@@ -10,12 +10,8 @@ def detection(path, model_path, offset, len_):
         writer = csv.writer(out)
         #MOT Challenge format
         #<frame_index>,<target_id>,<bbox_left>,<bbox_top>,<bbox_width>,<bbox_height>,<score>,<object_category>,<truncation>,<occlusion>
-        N = len(os.listdir(path+"/img1"))
-        if offset+len_> N:
-            print("offset + len > N")
-            return
         for f in range(len_):
-            if f%400==0: print(str(f)+" / "+str(len_))
+            if f%10==0: print(str(f)+" / "+str(len_))
             input_path = path+"/img1/frame"+str(offset+f)+".jpg"
             output_path = path+"/det/frame"+str(f)+".jpg"
 
@@ -37,4 +33,4 @@ def detection(path, model_path, offset, len_):
         return
 
 if __name__ == "__main__":
-    detection("test_short", 6827)
+    detection("openpose", 500)
