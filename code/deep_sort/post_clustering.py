@@ -5,26 +5,34 @@ from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 from copkmeans.cop_kmeans import cop_kmeans
+import time
+
 
 import operator
+
+
 
 
 run_common_frames = True
 
 def run(input_file, output_file, max_common_frames, n_clusters):
-    input = np.loadtxt(input_file, delimiter=",")
-    #input = np.random.rand(input_.shape[0], input_.shape[1]+128)
-    #input[:, :input_.shape[1]] = input_
-    #input[:, input_.shape[1]:] = normalize(input[:, input_.shape[1]:])
-
-
+    input = np.load(input_file)
 
 
     #print(np.linalg.norm(input[0, 10:]))
 
 
     #Frame_id, track id, ., ., ., ., ., ., ., ., appearance features
+
+    t_ = time.time()
+
+
+    print("Input shape:", input.shape)
     ids = list(np.unique(input[:,1]))
+
+    print(time.time() - t_)
+    t_ = time.time()
+
     print("Total number of ids:",len(ids))
     ids_by_frames = {}
     for row in input:
@@ -36,7 +44,7 @@ def run(input_file, output_file, max_common_frames, n_clusters):
     #plt.show()
 
 
-    print("Maximum number of ids on the same frame:",max(n_ids_by_frames.values()))
+    print("Maximum number of ids on the same frame:", max(n_ids_by_frames.values()))
     ff = []
     for f, nid in n_ids_by_frames.items():
         if nid > n_clusters:
@@ -132,7 +140,7 @@ def run(input_file, output_file, max_common_frames, n_clusters):
     output[:,1] = np.array([out_clusters[ids.index(int(x))] for x in input[:,1]])
     #print("Output:", output)
     print("Output saved to:", output_file)
-    np.savetxt(output_file, output, delimiter=',')
+    np.save(output_file, output)
 
 
 def parse_args():

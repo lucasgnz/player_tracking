@@ -36,14 +36,14 @@ config['pc']['max_common_frames'] = 0
 detection_ = False
 
 #AVANT DE LANCER CE MODULE, RAJOUTER un . DEVANT LES NOMS DE VIDEOS DANS data/ QUI ONT DEJA ETE TRAITEES,
-feature_extraction = False
+feature_extraction = True
 
 deep_sort = True
 post_clustering = True
 
 
 
-visualize = True
+visualize = False
 
 
 deep_sort_limit = False
@@ -103,9 +103,9 @@ if deep_sort:
     --min_confidence=" + str(config['ds']['min_confidence']) + " \
     --max_cosine_distance=" + str(config['ds']['max_cosine_distance']) + "\
     --nn_budget=" + str(config['ds']['nn_budget']) + " \
-    --output_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.txt' \
+    --output_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.npy' \
     --display=False")
-    print("Deep Sort tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.txt")
+    print("Deep Sort tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.npy")
 
 
 
@@ -115,19 +115,19 @@ if post_clustering:
     if not os.path.exists(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/"):
         os.mkdir(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/")
     os.system("python3  "+config['path']+"deep_sort/post_clustering.py \
-    --input_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.txt' \
-    --output_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.txt' \
+    --input_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"/det.npy' \
+    --output_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.npy' \
     --max_common_frames=" + str(config['pc']['max_common_frames']) + " \
     --n_clusters=" + str(config['pc']['n_clusters']) + "")
 
-    print("Clustered tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.txt")
+    print("Clustered tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.npy")
 
 
 #####   VISUALIZE   #####
 if visualize:
     os.system("python3 "+config['path']+"deep_sort/show_results.py \
     --sequence_dir="+config['path']+"data/"+config['vid_name']+"/ \
-    --result_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.txt' \
+    --result_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.npy' \
     --offset="+str(config['offset'])+" \
     --output_file='"+config['path']+"results/"+config['vid_name']+config['fe']['str']+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+".avi' \
     --update_ms=41")
@@ -153,9 +153,9 @@ if deep_sort_limit:
     --min_confidence=0.25 \
     --max_cosine_distance=0.25 \
     --nn_budget=1000 \
-    --output_file="+config['path']+"data/"+config['vid_name']+"/det_dsl/det.txt \
+    --output_file="+config['path']+"data/"+config['vid_name']+"/det_dsl/det.npy \
     --display=True")
-    print("Deep Sort 10 tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det_dsl/det.txt")
+    print("Deep Sort 10 tracklets stored in "+config['path']+"data/"+config['vid_name']+"/det_dsl/det.npy")
 
 
 
@@ -163,7 +163,7 @@ if deep_sort_limit:
 if False:
     os.system("python3 "+config['path']+"deep_sort/show_results.py \
     --sequence_dir="+config['path']+"data/"+config['vid_name']+"/ \
-    --result_file="+config['path']+"data/"+config['vid_name']+"/det_dsl/det.txt \
+    --result_file="+config['path']+"data/"+config['vid_name']+"/det_dsl/det.npy \
     --offset="+str(config['offset'])+" \
     --output_file="+config['path']+"results/"+config['vid_name']+"_dsl.avi \
     --update_ms=41 \

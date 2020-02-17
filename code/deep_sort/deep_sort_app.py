@@ -226,9 +226,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     visualizer.run(frame_callback)
 
     # Store results.
-    f = open(output_file, 'w')
-    w = csv.writer(f,delimiter=',')
-    w.writerows(results)
+    np.save(output_file, results)
 
 
 def bool_string(input_string):

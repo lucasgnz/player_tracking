@@ -34,7 +34,7 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
         If not None, a video of the tracking results is written to this file.
 
     """
-    results = np.loadtxt(result_file, delimiter=',')
+    results = np.load(result_file)
     n_frames = results[:, 0].max() - results[:, 0].min()
     seq_info = deep_sort_app.gather_sequence_info(sequence_dir, result_file, offset, n_frames, visualize=True)
 
