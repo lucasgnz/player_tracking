@@ -14,10 +14,12 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
 import warnings
+
+import time as t
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
+def gather_sequence_info(sequence_dir, detection_file,offset, n_frames, visualize=False):
     """Gather sequence information, such as image filenames, detections,
     groundtruth (if available).
 
@@ -43,10 +45,12 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
         * max_frame_idx: Index of the last frame.
 
     """
+
     image_dir = os.path.join(sequence_dir, "img1")
     image_filenames = {
         int(os.path.splitext(f.replace("frame",""))[0])-offset: os.path.join(image_dir, f)
-        for f in os.listdir(image_dir)}
+        for f in os.listdir(image_dir) if int(os.path.splitext(f.replace("frame",""))[0])-offset >= 0}
+
     groundtruth_file = os.path.join(sequence_dir, "gt/gt.txt")
 
     todel = []
@@ -59,7 +63,9 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
 
     detections = None
     if detection_file is not None:
-        detections = np.load(detection_file)
+        ext = detection_file.split(".")[-1]
+        detections = np.load(detection_file) if ext=='npy' else np.loadtxt(detection_file, delimiter=',')
+
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=',')
@@ -71,12 +77,12 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames):
     else:
         image_size = None
 
-    if len(image_filenames) > 0:
-        min_frame_idx = min(image_filenames.keys())
-        max_frame_idx = max(image_filenames.keys())
+    if visualize and len(image_filenames) > 0:
+            min_frame_idx = min(image_filenames.keys())
+            max_frame_idx = max(image_filenames.keys())
     else:
         min_frame_idx = int(detections[:, 0].min())
-        max_frame_idx = int(detections[:, 0].max())
+        max_frame_idx = min_frame_idx + n_frames
 
     info_filename = os.path.join(sequence_dir, "seqinfo.ini")
     if os.path.exists(info_filename):
@@ -176,8 +182,9 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
     def frame_callback(vis, frame_idx):
         aaa = n_frames / 10
-        if frame_idx % aaa ==0:
-            print("Processing frame {} / {}".format(frame_idx, n_frames))
+        if frame_idx % aaa == 0:
+            print("Processing frame {} / {} ".format(frame_idx, n_frames))
+
 
         # Load image and generate detections.
         detections = create_detections(
@@ -226,7 +233,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
 def bool_string(input_string):
     if input_string not in {"True","False"}:
-        raise ValueError("Please Enter a valid Ture/False choice")
+        raise ValueError("Please Enter a valid True/False choice")
     else:
         return (input_string == "True")
 

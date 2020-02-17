@@ -31,21 +31,23 @@ def LOMO(img, config):
     R_list       = config['lomo']['R_list']
     tau          = config['lomo']['tau']
     hsv_bin_size = config['lomo']['hsv_bin_size']
-    block_size   = config['lomo']['block_size']
-    block_step   = config['lomo']['block_step']
+    block_size_col = config['lomo']['block_size_col']
+    block_step_col = config['lomo']['block_step_col']
+    block_size_row = config['lomo']['block_size_row']
+    block_step_row = config['lomo']['block_step_row']
 
     img_retinex = retinex.MSRCP(img, sigma_list, low_clip, high_clip)
 
     siltp_feat = np.array([])
     hsv_feat = np.array([])
     for pool in range(3):
-        row_num = int((img.shape[0] - (block_size - block_step)) / block_step)
-        col_num = int((img.shape[1] - (block_size - block_step)) / block_step)
+        row_num = int((img.shape[0] - (block_size_row - block_step_row)) / block_step_row)
+        col_num = int((img.shape[1] - (block_size_col - block_step_col)) / block_step_col)
         for row in range(row_num):
             for col in range(col_num):
                 img_block = img[
-                    row*block_step:row*block_step+block_size,
-                    col*block_step:col*block_step+block_size
+                    row*block_step_row:row*block_step_row+block_size_row,
+                    col*block_step_col:col*block_step_col+block_size_col
                 ]
 
                 siltp_hist = np.array([])
@@ -58,8 +60,8 @@ def LOMO(img, config):
                     siltp_hist = np.concatenate([siltp_hist, siltp_hist_r], 0)
                
                 img_block = img_retinex[
-                    row*block_step:row*block_step+block_size,
-                    col*block_step:col*block_step+block_size
+                    row*block_step_row:row*block_step_row+block_size_row,
+                    col*block_step_col:col*block_step_col+block_size_col
                 ]                
                     
                 img_hsv = cv2.cvtColor(img_block.astype(np.float32), cv2.COLOR_BGR2HSV)

@@ -3,8 +3,11 @@
 	"R_list"      : [3, 5],
 	"tau"         : 0.3,
 	"hsv_bin_size": 8,
-	"block_size"  : 10,
-	"block_step"  : 5
+	"block_size_col"  : 10,
+	"block_size_row"  : 32,
+	"block_step_col"  : 5,
+	"block_step_row"  : 16,
+	"patch_width" : 64
     },
     "retinex": {
 	"sigma_list": [5, 20],

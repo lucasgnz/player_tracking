@@ -8,6 +8,7 @@ import tensorflow as tf
 import mmcv
 import json
 import math
+import time as t
 
 from op_lomo_extractor import op_lomo_extractor
 from sklearn.preprocessing import normalize
@@ -187,15 +188,20 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
 
             n_str_frame = 0
 
+
+
             def str_frame(n):
                 str_frame = ""
                 for _ in range(n): str_frame += "0"
                 return str_frame
 
+            t_ = t.time()
+
             for frame_idx in range(min_frame_idx, max_frame_idx + 1):
-                aaa = int((max_frame_idx - min_frame_idx + 1)/ 100)
+                aaa = int((max_frame_idx - min_frame_idx + 1)/ 10)
                 if (frame_idx - min_frame_idx ) % aaa == 0:
-                    print("Processing frame {} / {}".format(frame_idx, max_frame_idx))
+                    print("Processing frame {} / {} ".format(frame_idx, max_frame_idx)," - speed:", (t.time() - t_)/aaa, "s / frame")
+                    t_ = t.time()
                 mask = frame_indices == frame_idx
                 rows = detections_in[mask]
 
@@ -208,7 +214,7 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
                 width = bgr_image.shape[1]
                 height = bgr_image.shape[0]
                 #####
-
+                op_conf = 0
                 if openpose != '':
                 ### ADD OPEN POSE FEATURES to rows
                     if frame_idx == min_frame_idx:
@@ -230,11 +236,15 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
                         #Returns the confidence mean score of the keypoints of 'kp' that are contained in the detection box 'det'
                         return sum([kp[2] if (contains(det, kp)) else 0 for kp in keypoints])
 
-                    with open(os.path.join(sequence_dir, openpose, sequence+"_" + str_frame(n_str_frame - (log(frame_idx+offset) - log(min_frame_idx+offset))) + str(frame_idx+offset) + "_keypoints.json")) as json_file:
+                    if frame_idx+offset in [10**k for k in range(1,9)]:
+                        n_str_frame -= 1
+
+                    with open(os.path.join(sequence_dir,openpose,sequence+"_" + str_frame(n_str_frame) + str(frame_idx+offset)+"_keypoints.json")) as json_file:
+
                         openpose_data = json.load(json_file)
                         cost = []#Cost matrix for the assignment problem openPose people => detections obtained by the detector
                         keypoints_ = []
-                        bbox_ = []
+
                         for p in openpose_data ['people']:
                             keypoints = np.array(p["pose_keypoints_2d"]).reshape((-1,3))
                             keypoints[:, 0] += 1
@@ -242,50 +252,45 @@ def generate_detections(encoder, mot_dir, output_dir, offset, det_stage='det', d
                             keypoints[:, 1] += 1
                             keypoints[:, 1] *= height / 2
 
-                            """
-                            keypoints_conf = np.array(
-                                [kp for kp in list(keypoints) if kp[2] > 0.1 and not (kp[0] == -1.0 and kp[1] == -1.0)])
-
-                            bbox = [
-                                (np.min(keypoints_conf[:, 0])),
-                                (np.min(keypoints_conf[:, 1])),
-                                (np.max(keypoints_conf[:, 0])),
-                                (np.max(keypoints_conf[:, 1]))]
-                            bbox[2] -= bbox[0]
-                            bbox[3] -= bbox[1]
-                            bbox_.append(bbox)"""
-
-
-
                             cost.append([-n_keypoints(det, keypoints) for det in rows[:, 2:6]])
 
+                            show_patch = (frame_idx - min_frame_idx ) % 50 == 49
 
-                            keypoints_features, conf = op_lomo_extractor(keypoints, lomo_config, bgr_image)
+
+                            keypoints_features, conf = op_lomo_extractor(keypoints, lomo_config, bgr_image)#, show_patch)
+
+                            op_conf += conf / len(openpose_data['people'])
                             keypoints_.append(keypoints_features)
 
 
+                        #We solve the assignment problem
                         n_op_lomo_features = keypoints_[0].shape[0]
                         _, col_ind = linear_sum_assignment(cost)
                         rows_ = np.concatenate((rows, np.ones((rows.shape[0], n_op_lomo_features))/n_op_lomo_features), axis=1)
 
-                        for j,i in enumerate(col_ind):
+                        for j,i in enumerate(col_ind):#We construct new data from the assigned feature vectors
                             rows_[i, rows.shape[1]:] = keypoints_[j]
                             #print(rows[i,2:6], bbox_[j], keypoints_[j][2::3].max())
 
-                        rows_[:, rows.shape[1]:] = normalize(rows_[:, rows.shape[1]:]) * alpha_op * conf
+                        #Re-normalize openpose features with mean confidence
+                        rows_[:, rows.shape[1]:] = normalize(rows_[:, rows.shape[1]:]) * alpha_op * op_conf
 
-                        rows_ = np.array(rows_)
+
+                        #print("Open pose features signal strength: ", op_conf)
 
 
                     ##END OPEN POSE FEATURES
                 else:
                     rows_ = rows
+                    alpha_op = 0
+                    op_conf = 0
 
 
                 #####
                 features = encoder(bgr_image, rows_[:, 2:6].copy()) ##ADD DEEPSORT FEATURES
-                detections_out += [np.r_[(row, feature * np.sqrt(1 - (alpha_op * conf)**2))] for row, feature
+                detections_out += [np.r_[(row, feature * np.sqrt(1 - (alpha_op * op_conf)**2))] for row, feature
                                    in zip(rows_, features)]
+
 
             output_filename = os.path.join(output_dir, "{}_{}.npy".format(sequence, det_stage))
             np.save(
