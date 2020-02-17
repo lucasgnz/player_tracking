@@ -16,6 +16,6 @@ Activer les scripts dans main.py dans l'ordre suivant (les différentes sorties 
 
 3. Générer les tracklets avec Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}/det.txt)
     
-4. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det{config.fr}_ds{config.ds}_pc{config.pc}/det.txt) pour réduire le nombre de tracklets au nombre voulu (nombre de joueurs présents sur la vidéo)
+4. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}_pc{config.pc}/det.txt) pour réduire le nombre de tracklets au nombre voulu (nombre de joueurs présents sur la vidéo)
 
 4. Visualiser le résultat en vidéo
