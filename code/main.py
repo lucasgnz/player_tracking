@@ -19,7 +19,7 @@ def print_line():
 ###########################################    DEBUT CONFIGURATION     #################################################
 ########################################################################################################################
 #General configuration
-config['path'] = "/Users/lucasgonzalez/work/telecom/PRIM/code/"
+config['path'] = "/Users/lucasgonzalez/work/telecom/PRIM/"
 config['vid_name'] = "100"
 config['offset'] = 500
 config['n_frames'] = 4500
@@ -126,14 +126,14 @@ def run(config, optimized_stat='N_a'):
     print_line()
     #####   SCORE AGAINST GROUND TRUTH   #####
     def score_det(verbose=0):
-        os.system("python3 " + config['path'] + "score.py \
+        os.system("python3 " + config['path'] + "code/score.py \
             --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
             --verbose=" + str(verbose)+ " \
             --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '')+"/det.npy' \
             --gt_file='" + config['path'] + "data/" + config['vid_name'] + "/gt/gt.npy' \
             --offset=" + str(config['offset']))
     def score_ds(verbose=0):
-        os.system("python3 " + config['path'] + "score.py \
+        os.system("python3 " + config['path'] + "scode/core.py \
             --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
             --verbose=" + str(verbose) + " \
             --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '') + "_ds" +
@@ -141,7 +141,7 @@ def run(config, optimized_stat='N_a'):
             --gt_file='" + config['path'] + "data/" + config['vid_name'] + "/gt/gt.npy' \
             --offset=" + str(config['offset']))
     def score_dsl(verbose=0):
-        os.system("python3 " + config['path'] + "score.py \
+        os.system("python3 " + config['path'] + "code/score.py \
             --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
             --verbose=" + str(verbose) + " \
             --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '') + "_dsl" +
@@ -150,7 +150,7 @@ def run(config, optimized_stat='N_a'):
             --offset=" + str(config['offset']))
 
     def score_pc(verbose=0):
-        os.system("python3 " + config['path'] + "score.py \
+        os.system("python3 " + config['path'] + "code/score.py \
             --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
             --verbose=" + str(verbose) + " \
             --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '') + "_ds" +
@@ -162,13 +162,13 @@ def run(config, optimized_stat='N_a'):
     #####   DETECTION   #####
     if detection_:
         print("Detection...")
-        detection(config['path']+"data/"+config['vid_name'], config['path']+"detection/models/yolo-tiny.h5", config['offset'], config['n_frames'])
+        detection(config['path']+"data/"+config['vid_name'], config['path']+"code/detection/models/yolo-tiny.h5", config['offset'], config['n_frames'])
         score_det()
 
     if feature_extraction:
         print("Features extraction from detection boxes "+("'and open pose data/'" if config['fe']['alpha_op'] > 0 else '')+"...")
-        os.system("python3 "+config['path']+"deep_sort/tools/generate_detections.py \
-        --model="+config['path']+"deep_sort/resources/networks/mars-small128.pb \
+        os.system("python3 "+config['path']+"code/deep_sort/tools/generate_detections.py \
+        --model="+config['path']+"code/deep_sort/resources/networks/mars-small128.pb \
         --mot_dir="+config['path']+"data/ \
         --offset="+str(config['offset'])+" \
         --det_stage='det"+config['fe']['str']+"' \
@@ -203,7 +203,7 @@ def run(config, optimized_stat='N_a'):
         print("Running Deep Sort algorithm...")
         if not os.path.exists(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"/"):
             os.mkdir(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"/")
-        os.system("python3 "+config['path']+"deep_sort/deep_sort_app.py \
+        os.system("python3 "+config['path']+"code/deep_sort/deep_sort_app.py \
         --sequence_dir="+config['path']+"data/"+config['vid_name']+"/ \
         --detection_file='"+ config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '')+"/det.npy' \
         --offset="+str(config['offset'])+" \
@@ -225,7 +225,7 @@ def run(config, optimized_stat='N_a'):
         print("Post-clustering of Deep Sort tracklets...")
         if not os.path.exists(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/"):
             os.mkdir(config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/")
-        os.system("python3  "+config['path']+"post_clustering" + (str(int(config['pc']['version'])) if 'version' in config['pc'].keys() else "0")+".py \
+        os.system("python3  "+config['path']+"code/post_clustering" + (str(int(config['pc']['version'])) if 'version' in config['pc'].keys() else "0")+".py \
         --input_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"/det.npy' \
         --output_file='"+config['path']+"data/"+config['vid_name']+"/det"+config['fe']['str']+("_pca" if config['pca']['active'] else '')+"_ds"+config['ds']['str']+"_pc"+config['pc']['str']+"/det.npy' \
         --max_common_frames=" + str(config['pc']['max_common_frames']) + " \
@@ -241,7 +241,7 @@ def run(config, optimized_stat='N_a'):
         "_pca" if config['pca']['active'] else '') + "_dsl" + config['dsl']['str'] + "/"):
             os.mkdir(config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str'] + (
                 "_pca" if config['pca']['active'] else '') + "_dsl" + config['dsl']['str'] + "/")
-        os.system("python3 " + config['path'] + "deep_sort_limit/deep_sort_app.py \
+        os.system("python3 " + config['path'] + "code/deep_sort_limit/deep_sort_app.py \
                 --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
                 --detection_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '') + "/det.npy' \
                 --offset=" + str(config['offset']) + " \
@@ -264,7 +264,7 @@ def run(config, optimized_stat='N_a'):
 
     #####   VISUALIZE   #####
     if visualize_pc:
-        os.system("python3 " + config['path'] + "deep_sort/show_results.py \
+        os.system("python3 " + config['path'] + "code/deep_sort/show_results.py \
            --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
            --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str'] + (
             "_pca" if config['pca']['active'] else '') + "_ds" + config['ds']['str'] + "_pc" + config['pc']['str'] + "/det.npy' \
@@ -275,7 +275,7 @@ def run(config, optimized_stat='N_a'):
 
     #####   VISUALIZE DEEPSORT TRACKLETS #####
     if visualize_ds:
-        os.system("python3 " + config['path'] + "deep_sort/show_results.py \
+        os.system("python3 " + config['path'] + "code/deep_sort/show_results.py \
            --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
            --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str'] + (
             "_pca" if config['pca']['active'] else '') + "_ds" +
@@ -287,7 +287,7 @@ def run(config, optimized_stat='N_a'):
            --update_ms=41")
     #####    VISUALIZE LIMITED DEEPSORT TRACKLETS
     if visualize_dsl:
-        os.system("python3 " + config['path'] + "deep_sort/show_results.py \
+        os.system("python3 " + config['path'] + "code/deep_sort/show_results.py \
            --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
            --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str'] + (
             "_pca" if config['pca']['active'] else '') + "_dsl" +
@@ -300,7 +300,7 @@ def run(config, optimized_stat='N_a'):
 
     #####   VISUALIZE GROUND TRUTH   #####
     if visualize_gt:
-        os.system("python3 " + config['path'] + "deep_sort/show_results.py \
+        os.system("python3 " + config['path'] + "code/deep_sort/show_results.py \
            --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
            --result_file='" + config['path'] + "data/" + config['vid_name'] + "/gt/gt.npy' \
            --offset=" + str(config['offset']) + " \
