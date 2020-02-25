@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-def gather_sequence_info(sequence_dir, detection_file, offset, n_frames):
+def gather_sequence_info(sequence_dir, detection_file, offset, n_frames, visualize=False):
     """Gather sequence information, such as image filenames, detections,
     groundtruth (if available).
 
@@ -59,7 +59,9 @@ def gather_sequence_info(sequence_dir, detection_file, offset, n_frames):
 
     detections = None
     if detection_file is not None:
-        detections = np.load(detection_file)
+        ext = detection_file.split(".")[-1]
+        detections = np.load(detection_file) if ext=='npy' else np.loadtxt(detection_file, delimiter=',')
+
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=',')
@@ -71,7 +73,7 @@ def gather_sequence_info(sequence_dir, detection_file, offset, n_frames):
     else:
         image_size = None
 
-    if len(image_filenames) > 0:
+    if visualize and len(image_filenames) > 0:
         min_frame_idx = min(image_filenames.keys())
         max_frame_idx = max(image_filenames.keys())
     else:
@@ -139,7 +141,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init, max_tracks, metric_param):
+        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init, max_tracks, metric_param, alpha_ds):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -170,7 +172,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     """
     seq_info = gather_sequence_info(sequence_dir, detection_file, offset, n_frames)
     metric = nn_matching.NearestNeighborDistanceMetric(
-        "cosine_custom", max_cosine_distance, nn_budget)
+        alpha_ds, max_cosine_distance, nn_budget)
     tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init, max_tracks=max_tracks, metric_param=metric_param)
     results = []
 
@@ -209,7 +211,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                 continue
             bbox = track.to_tlwh()
             results.append([
-                frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+                               frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3], 1, -1, -1, -1])
 
     # Run tracker.
     if display:
@@ -218,14 +220,13 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
 
-    # Store results.
     #Reorder from 1 to n_tracks:
     ids = list(np.unique(np.array(results)[:,1]))
-    print(len(ids), ids)
-    f = open(output_file, 'w')
-    for row in list(results):
-        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
-            row[0], ids.index(row[1]), row[2], row[3], row[4], row[5]),file=f)
+    results = np.array(results)
+    results[:,1] = [ids.index(x) for x in results[:,1]]
+
+    # Store results.
+    np.save(output_file, results)
 
 
 def bool_string(input_string):
@@ -273,6 +274,9 @@ def parse_args():
         "--metric_param", help="Importance of Mahalanobis distance in combined metric",
         default=0.0, type=float)
     parser.add_argument(
+        "--alpha_ds", help = "Importance of mean appearance distance compared to min appearance distance in similarity measure of tracks to tracklets",
+    default = 0.0, type = float)
+    parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
         "disregarded", default=0, type=int)
@@ -296,4 +300,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init), int(args.max_tracks), args.metric_param)
+        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init), int(args.max_tracks), args.metric_param, args.alpha_ds)

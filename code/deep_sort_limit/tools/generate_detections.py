@@ -180,7 +180,7 @@ def generate_detections(encoder, mot_dir, output_dir, offset, detection_dir=None
                 detections_out += [np.r_[(row, feature)] for row, feature
                                    in zip(rows, features)]
 
-            output_filename = os.path.join(output_dir, "%s.npy" % sequence)
+            output_filename = os.path.join(output_dir, "det.npy")
             np.save(
                 output_filename, np.asarray(detections_out), allow_pickle=False)
 

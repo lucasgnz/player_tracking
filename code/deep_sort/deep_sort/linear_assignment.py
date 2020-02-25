@@ -54,7 +54,10 @@ def min_cost_matching(
 
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
+    where_are_NaNs = np.isnan(cost_matrix)
+    cost_matrix[where_are_NaNs] = max_distance + 1e-5
     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+
     indices = linear_assignment(cost_matrix)
 
     matches, unmatched_tracks, unmatched_detections = [], [], []

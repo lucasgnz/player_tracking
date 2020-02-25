@@ -102,6 +102,18 @@ def _cosine_distance_mean(x, y):
     return distances.mean(axis=0)
 
 
+def _cosine_distance_custom(x, y, alpha=0.0):
+    """ Helper function for  distance metric (cosine).
+    """
+    distances = _cosine_distance(x, y)
+    n = len(x)
+    #mean_decay = [n-k for k in range(n)]
+    mean_decay = [1 for k in range(n)]# le decay était mauvaise idée je pense
+    mean_decay /= np.sum(mean_decay)
+    #return np.dot(distances.T, mean_decay) ** alpha * distances.min(axis=0) ** (1 - alpha)
+    return np.dot(distances.T,mean_decay)*alpha + distances.min(axis=0)*(1-alpha)
+
+
 class NearestNeighborDistanceMetric(object):
     """
     A nearest neighbor distance metric that, for each target, returns
@@ -135,9 +147,11 @@ class NearestNeighborDistanceMetric(object):
             self._metric = _nn_cosine_distance
         elif metric == "cosine_mean":
             self._metric = _cosine_distance_mean
+        elif isinstance(metric, float):
+            self._metric = lambda x,y:_cosine_distance_custom(x, y, alpha=metric)
         else:
             raise ValueError(
-                "Invalid metric; must be either 'euclidean' or 'cosine'")
+                "Invalid metric; must be either 'euclidean' / 'cosine' / 'cosine_mean' / or a value between 0 and 1 for custom metric")
         self.matching_threshold = matching_threshold
         self.budget = budget
         self.samples = {}

@@ -34,6 +34,7 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
         If not None, a video of the tracking results is written to this file.
 
     """
+    print(result_file)
     results = np.load(result_file)
     n_frames = results[:, 0].max() - results[:, 0].min()
     seq_info = deep_sort_app.gather_sequence_info(sequence_dir, result_file, offset, n_frames, visualize=True)
@@ -42,7 +43,7 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
         raise ValueError("No groundtruth available. Cannot show false alarms.")
 
     def frame_callback(vis, frame_idx):
-        aaa = n_frames / 10
+        aaa = int(n_frames / 10)
         if frame_idx % aaa == 0:
             print("Showing frame {} / {}".format(frame_idx, n_frames))
 

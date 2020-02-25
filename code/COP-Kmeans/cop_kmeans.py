@@ -3,24 +3,26 @@ import random
 import numpy as np
 from sklearn.preprocessing import normalize
 from sklearn.metrics.pairwise import cosine_similarity
+
+
 def cop_kmeans(dataset, k, ml=[], cl=[],
                initialization='kmpp',
-               max_iter=300, tol=1e-4, spherical=False):
-
+               max_iter=50, tol=1e-4, spherical=False, gallery=None):
     ml, cl = transitive_closure(ml, cl, len(dataset))
     ml_info = get_ml_info(ml, dataset)
-    tol = tolerance(tol, dataset)
+    # tol = tolerance(tol, dataset)
     if spherical:
         print("Using spherical cop_kmeans")
 
-    centers = initialize_centers(dataset, k, initialization, spherical)
-    if spherical:
-        centers = normalize(centers)
+    centers = initialize_centers(dataset, k, initialization, spherical, gallery)
 
     for it in range(max_iter):
         clusters_ = [-1] * len(dataset)
         for i, d in enumerate(dataset):
-            indices, _ = closest_clusters(centers, d, spherical)
+            if gallery == None:
+                indices, _ = closest_clusters(centers, d, spherical)
+            else:
+                indices, _ = closest_clusters_gallery(centers, i, spherical, gallery)
             counter = 0
             if clusters_[i] == -1:
                 found_cluster = False
@@ -38,28 +40,38 @@ def cop_kmeans(dataset, k, ml=[], cl=[],
 
         clusters_, centers_ = compute_centers(clusters_, dataset, k, ml_info)
         if spherical:
-            centers_ = normalize(centers_)
             shift = sum(1 - cosine_similarity([centers[i]], [centers_[i]]) for i in range(k))
+            print(shift)
         else:
             shift = sum(l2_distance(centers[i], centers_[i]) for i in range(k))
         if shift <= tol:
             break
-
         centers = centers_
-
 
     return clusters_, centers_
 
+
 def l2_distance(point1, point2):
-    return sum([(float(i)-float(j))**2 for (i, j) in zip(point1, point2)])
+    return sum([(float(i) - float(j)) ** 2 for (i, j) in zip(point1, point2)])
+
 
 # taken from scikit-learn (https://goo.gl/1RYPP5)
 def tolerance(tol, dataset):
     n = len(dataset)
     dim = len(dataset[0])
-    averages = [sum(dataset[i][d] for i in range(n))/float(n) for d in range(dim)]
-    variances = [sum((dataset[i][d]-averages[d])**2 for i in range(n))/float(n) for d in range(dim)]
+    averages = [sum(dataset[i][d] for i in range(n)) / float(n) for d in range(dim)]
+    variances = [sum((dataset[i][d] - averages[d]) ** 2 for i in range(n)) / float(n) for d in range(dim)]
     return tol * sum(variances) / dim
+
+
+def cosine_similarity_(X, Y):
+    sim = cosine_similarity(X, Y).reshape(-1)
+    return sim.max(axis=0)
+
+def cosine_similarity_min(X, Y):
+    sim = cosine_similarity(X, Y).reshape(-1)
+    return sim.min(axis=0)
+
 
 def closest_clusters(centers, datapoint, spherical):
     if spherical:
@@ -68,7 +80,16 @@ def closest_clusters(centers, datapoint, spherical):
         distances = [l2_distance(center, datapoint) for center in centers]
     return sorted(range(len(distances)), key=lambda x: distances[x]), distances
 
-def initialize_centers(dataset, k, method, spherical):
+
+def closest_clusters_gallery(centers, idx_datapoint, spherical, gallery):
+    if spherical:
+        distances = [1 - cosine_similarity_([center], gallery[idx_datapoint]) for center in centers]
+    else:
+        distances = [l2_distance(center, datapoint) for center in centers]
+    return sorted(range(len(distances)), key=lambda x: distances[x]), distances
+
+
+def initialize_centers(dataset, k, method, spherical, gallery):
     if method == 'random':
         ids = list(range(len(dataset)))
         random.shuffle(ids)
@@ -79,7 +100,7 @@ def initialize_centers(dataset, k, method, spherical):
         centers = []
 
         for _ in range(k):
-            chances = [x/sum(chances) for x in chances]
+            chances = [x / sum(chances) for x in chances]
             r = random.random()
             acc = 0.0
             for index, chance in enumerate(chances):
@@ -89,7 +110,10 @@ def initialize_centers(dataset, k, method, spherical):
             centers.append(dataset[index])
 
             for index, point in enumerate(dataset):
-                cids, distances = closest_clusters(centers, point, spherical)
+                if gallery == None:
+                    cids, distances = closest_clusters(centers, point, spherical)
+                else:
+                    cids, distances = closest_clusters_gallery(centers, index, spherical, gallery)
                 chances[index] = distances[cids[0]]
 
         return centers
@@ -103,8 +127,8 @@ def initialize_centers(dataset, k, method, spherical):
             centers.append(dataset[index])
             chances[index] = 0
 
-        for _ in range(k-len(centers_indexes)):
-            chances = [x/sum(chances) for x in chances]
+        for _ in range(k - len(centers_indexes)):
+            chances = [x / sum(chances) for x in chances]
             r = random.random()
             acc = 0.0
             for index, chance in enumerate(chances):
@@ -114,10 +138,14 @@ def initialize_centers(dataset, k, method, spherical):
             centers.append(dataset[index])
 
             for index, point in enumerate(dataset):
-                cids, distances = closest_clusters(centers, point, spherical)
+                if gallery == None:
+                    cids, distances = closest_clusters(centers, point, spherical)
+                else:
+                    cids, distances = closest_clusters_gallery(centers, index, spherical, gallery)
                 chances[index] = distances[cids[0]]
 
         return centers
+
 
 def violate_constraints(data_index, cluster_index, clusters, ml, cl):
     for i in ml[data_index]:
@@ -130,13 +158,15 @@ def violate_constraints(data_index, cluster_index, clusters, ml, cl):
 
     return False
 
+
 def compute_centers(clusters, dataset, k, ml_info):
     cluster_ids = set(clusters)
     k_new = len(cluster_ids)
     id_map = dict(zip(cluster_ids, range(k_new)))
     clusters = [id_map[x] for x in clusters]
- 
+
     dim = len(dataset[0])
+
     centers = [[0.0] * dim for i in range(k)]
 
     counts = [0] * k_new
@@ -147,8 +177,7 @@ def compute_centers(clusters, dataset, k, ml_info):
 
     for j in range(k_new):
         for i in range(dim):
-            centers[j][i] = centers[j][i]/float(counts[j])
-
+            centers[j][i] = centers[j][i] / float(counts[j])
     if k_new < k:
         ml_groups, ml_scores, ml_centroids = ml_info
         current_scores = [sum(l2_distance(centers[clusters[i]], dataset[i])
@@ -158,7 +187,7 @@ def compute_centers(clusters, dataset, k, ml_info):
                            key=lambda x: current_scores[x] - ml_scores[x],
                            reverse=True)
 
-        for j in range(k-k_new):
+        for j in range(k - k_new):
             gid = group_ids[j]
             cid = k_new + j
             centers[cid] = ml_centroids[gid]
@@ -166,6 +195,7 @@ def compute_centers(clusters, dataset, k, ml_info):
                 clusters[i] = cid
 
     return clusters, centers
+
 
 def get_ml_info(ml, dataset):
     flags = [True] * len(dataset)
@@ -187,12 +217,13 @@ def get_ml_info(ml, dataset):
                 centroids[j][d] += dataset[i][d]
             centroids[j][d] /= float(len(group))
 
-
     scores = [sum(l2_distance(centroids[j], dataset[i])
                   for i in groups[j])
               for j in range(len(groups))]
 
     return groups, scores, centroids
+
+
 def transitive_closure(ml, cl, n):
     ml_graph = dict()
     cl_graph = dict()
@@ -235,7 +266,7 @@ def transitive_closure(ml, cl, n):
     for i in ml_graph:
         for j in ml_graph[i]:
             if j != i and j in cl_graph[i]:
-                raise Exception('inconsistent constraints between %d and %d' %(i, j))
+                raise Exception('inconsistent constraints between %d and %d' % (i, j))
 
     return ml_graph, cl_graph
 

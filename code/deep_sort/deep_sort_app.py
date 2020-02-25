@@ -66,6 +66,7 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames, visualiz
         ext = detection_file.split(".")[-1]
         detections = np.load(detection_file) if ext=='npy' else np.loadtxt(detection_file, delimiter=',')
 
+
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=',')
@@ -145,7 +146,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init):
+        nn_budget, display, offset, n_frames, max_iou_distance, max_age, n_init, alpha_ds=0.0):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -174,9 +175,11 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         If True, show visualization of intermediate tracking results.
 
     """
+
+
     seq_info = gather_sequence_info(sequence_dir, detection_file, offset, n_frames)
     metric = nn_matching.NearestNeighborDistanceMetric(
-        "cosine", max_cosine_distance, nn_budget)
+        alpha_ds, max_cosine_distance, nn_budget)
     tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init)
     results = []
 
@@ -267,6 +270,10 @@ def parse_args():
         "--n_init", help="Number of frames needed for initialization of a tracklet",
         default=50, type=int)
     parser.add_argument(
+        "--alpha_ds",
+        help="Importance of mean appearance distance compared to min appearance distance in similarity measure of tracks to tracklets",
+        default=0.0, type=float)
+    parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
         "disregarded", default=0, type=int)
@@ -290,4 +297,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init))
+        args.max_cosine_distance, args.nn_budget, args.display, int(args.offset), int(args.n_frames), args.max_iou_distance, int(args.max_age), int(args.n_init), args.alpha_ds)

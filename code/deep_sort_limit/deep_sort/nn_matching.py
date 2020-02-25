@@ -101,12 +101,16 @@ def _cosine_distance_mean(x, y):
     distances = _cosine_distance(x, y)
     return distances.mean(axis=0)
 
-def _cosine_distance_custom(x, y):
+
+def _cosine_distance_custom(x, y, alpha=0.0):
     """ Helper function for  distance metric (cosine).
     """
-    alpha = 1
     distances = _cosine_distance(x, y)
-    return alpha*distances.mean(axis=0) + (1-alpha)*distances.min(axis=0)
+    n = len(x)
+    mean_decay = [n-k for k in range(n)]
+    mean_decay /= np.sum(mean_decay)
+    #return np.dot(distances.T, mean_decay) ** alpha * distances.min(axis=0) ** (1 - alpha)
+    return np.dot(distances.T,mean_decay)*alpha + distances.min(axis=0)*(1-alpha)
 
 
 class NearestNeighborDistanceMetric(object):
@@ -142,11 +146,11 @@ class NearestNeighborDistanceMetric(object):
             self._metric = _nn_cosine_distance
         elif metric == "cosine_mean":
             self._metric = _cosine_distance_mean
-        elif metric == "cosine_custom":
-            self._metric = _cosine_distance_custom
+        elif isinstance(metric, float):
+            self._metric = lambda x,y:_cosine_distance_custom(x, y, alpha=metric)
         else:
             raise ValueError(
-                "Invalid metric; must be either 'euclidean' or 'cosine'")
+                "Invalid metric; must be either 'euclidean' / 'cosine' / 'cosine_mean' / or a value between 0 and 1 for custom metric")
         self.matching_threshold = matching_threshold
         self.budget = budget
         self.samples = {}
@@ -164,11 +168,21 @@ class NearestNeighborDistanceMetric(object):
             A list of targets that are currently present in the scene.
 
         """
+        """
+        MODIFICATION 
+        
+        ANCIEN CODE:
         for feature, target in zip(features, targets):
             self.samples.setdefault(target, []).append(feature)
             if self.budget is not None:
                 self.samples[target] = self.samples[target][-self.budget:]
 
+        self.samples = {k: self.samples[k] for k in active_targets}"""
+        for feature, target in zip(features, targets):
+            if target not in self.samples.keys() or len(self.samples[target]) < self.budget:
+                self.samples.setdefault(target, []).append(feature)
+                if self.budget is not None:
+                    self.samples[target] = self.samples[target][-self.budget:]
         self.samples = {k: self.samples[k] for k in active_targets}
 
     def distance(self, features, targets):

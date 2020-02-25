@@ -6,6 +6,7 @@ from . import linear_assignment
 from . import iou_matching
 from .track import Track
 
+from . import kalman_filter
 
 class Tracker:
     """
@@ -66,8 +67,6 @@ class Tracker:
 
         """
         gate = len([t for t in self.tracks if t.is_confirmed()]) < self.max_tracks#True until all tracks are created
-        if gate:
-            print("Number of confirmed tracks:", len([t for t in self.tracks if t.is_confirmed()]))
         #print([t.time_since_update for t in self.tracks if t.is_confirmed()])
         # Run matching cascade.
         matches, unmatched_tracks, unmatched_detections = \
@@ -101,14 +100,14 @@ class Tracker:
 
     def _match(self, detections, gate=True):
         #print("MATCH")
-        def gated_metric(tracks, dets, track_indices, detection_indices):
+        def gated_metric(tracks, dets, track_indices, detection_indices, metric_param=0):
             features = np.array([dets[i].feature for i in detection_indices])
 
             targets = np.array([tracks[i].track_id for i in track_indices])
             cost_matrix = self.metric.distance(features, targets)
             cost_matrix = linear_assignment.gate_cost_matrix(
                 self.kf, cost_matrix, tracks, dets, track_indices,
-                detection_indices, gate=gate, metric_param=self.metric_param)
+                detection_indices, gate=gate, metric_param=metric_param)
 
             return cost_matrix
 
@@ -118,38 +117,55 @@ class Tracker:
         unconfirmed_tracks = [
             i for i, t in enumerate(self.tracks) if not t.is_confirmed()]
 
-
-        if gate:
-            threshold = self.metric.matching_threshold
-        else:
-            threshold = self.metric.matching_threshold#1e+5 - 1
-
-        # Associate confirmed tracks using appearance features.
-        #CASCADE OR NOT CASCADE????
-
-        matches_a, unmatched_tracks_a, unmatched_detections = \
-            linear_assignment.matching_cascade(
-                                        gated_metric, threshold, self.max_age,
-                self.tracks, detections, confirmed_tracks)
-
-        #print(len(detections), self.tracks)
-
-        """matches_a, unmatched_tracks_a, unmatched_detections = \
-            linear_assignment.min_cost_matching(
-                gated_metric, threshold, self.tracks, detections,
-                confirmed_tracks, list(range(len(detections))))"""
-
+        #LA MODIFICATION PRINCIPALE EST ICI
+        # AU LIEU d'appliquer le gate sur la matrices des distances, on autorise deepsort à associer les détections restantes uniquement sur la base du filtre de Kalman
 
 
         """
-        cost=0
-        cost_matrix = gated_metric(self.tracks, detections,
-                confirmed_tracks, list(range(len(detections))))
-        for a, b in matches_a:
-            cost += cost_matrix[a,b]
-        print("Cost:", cost)"""
+        if gate:
+            threshold = self.metric.matching_threshold
+        else:
+            threshold = 1e+5 - 1"""
+        # Associate confirmed tracks using appearance features.
 
 
+        threshold = self.metric.matching_threshold
+
+        """matches_a, unmatched_tracks_a, unmatched_detections = \
+            linear_assignment.matching_cascade(
+                                        gated_metric, threshold, self.max_age,
+                self.tracks, detections, confirmed_tracks)"""
+
+        # AUTRE MODIFICATION, on ne fait plus la "matching cascade" mais directement le matching
+
+        matches_a, unmatched_tracks_a, unmatched_detections = \
+            linear_assignment.min_cost_matching(
+                gated_metric, threshold, self.tracks, detections,
+                confirmed_tracks)
+
+
+        """
+
+               on laisse le gating threshold sur la cosine distance mais on refait un tour avec un plus grand metric_param (importance de la distance de Mahalanobis)
+               pour recoller les morceaux à partir du filtre de kalman quand une détection semble trop différente visuelement de tous les tracklets
+        Cela l'empêche de créer des nouvelles identités à cause de trop grosses variations d'apparences, et permet de conserver l'identité même lorsque le joueur se retourne (par exemple)
+        
+
+               """
+
+
+        gate_kalman = kalman_filter.chi2inv95[4]
+
+        matches_c, unmatched_tracks_a, unmatched_detections = \
+            linear_assignment.min_cost_matching(
+                lambda a,b,c,d: gated_metric(a,b,c,d,self.metric_param), self.metric_param*gate_kalman + (1-self.metric_param)*threshold, self.tracks, detections,
+                unmatched_tracks_a, unmatched_detections)
+
+
+        """if len(matches_c) > 0:
+            print("raccord !")"""
+
+        matches_a = matches_a + matches_c
 
 
         #print(gate, unmatched_detections)
