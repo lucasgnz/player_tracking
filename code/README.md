@@ -13,9 +13,18 @@ Activer les scripts dans main.py dans l'ordre suivant (les différentes sorties 
 2. Extraires les features à partir de ces détections (génère un fichier deep_sort/resources/detections/foot/nom_de_la_video_det{config.fe}.npy)
 
 
-
-3. Générer les tracklets avec Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}/det.npy)
+3.a) Générer les tracklets avec Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}/det.npy)
     
-4. Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}_pc{config.pc}/det.npy) pour réduire le nombre de tracklets au nombre voulu (nombre de joueurs présents sur la vidéo)
+3.b) Clustering post Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_ds{config.ds}_pc{config.pc}/det.npy) pour réduire le nombre de tracklets au nombre voulu (nombre de joueurs présents sur la vidéo)
 
-4. Visualiser le résultat en vidéo
+OU
+
+3. Générer les tracklets avec Limited Deep Sort (génère un fichier data/nom_de_la_video/det{config.fe}_dsl{config.dsl}/det.npy)
+
+4. Visualiser les différents résultats en vidéo et les sauvegarder dans des fichiers .avi.
+
+
+
+
+
+Pour effectuer un tuning des hyperparamètres, activer model_selection et modifier la fin du fichier main.py (la partie utilisant hyperopt). Il faut également activer les modules que l'on veut inclure dans les modèles à comparer.
