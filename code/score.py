@@ -96,7 +96,6 @@ def run(sequence_dir, result_file, gt_file=None, offset=0, verbose=0):
                 print("Hypothesis ID: {} => no match with ground truth".format(i))
 
     summary.insert(0, "Purity", np.mean(purity))
-    summary.insert(0, "test", total_n_annotations)
     summary.insert(0, "N_a", total_n_annotations / np.unique(hypotheses[:, 1]).shape[0])
     summary.insert(0, "Number of IDs", [int(np.unique(hypotheses[:, 1]).shape[0])])
 

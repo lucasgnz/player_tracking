@@ -133,7 +133,7 @@ def run(config, optimized_stat='N_a'):
             --gt_file='" + config['path'] + "data/" + config['vid_name'] + "/gt/gt.npy' \
             --offset=" + str(config['offset']))
     def score_ds(verbose=0):
-        os.system("python3 " + config['path'] + "scode/core.py \
+        os.system("python3 " + config['path'] + "code/score.py \
             --sequence_dir=" + config['path'] + "data/" + config['vid_name'] + "/ \
             --verbose=" + str(verbose) + " \
             --result_file='" + config['path'] + "data/" + config['vid_name'] + "/det" + config['fe']['str']+("_pca" if config['pca']['active'] else '') + "_ds" +
@@ -341,7 +341,6 @@ def run(config, optimized_stat='N_a'):
         if os.path.exists(dsl_score_path):
             scores = add_score("LIMITED DEEPSORT", pd.read_csv(dsl_score_path), scores)
 
-        pprint.pprint(scores[['Model', 'Purity', 'test', 'Number of IDs', 'N_a', 'recall', 'mota', 'motp', 'idf1']])
 
         pprint.pprint(scores[['Model', 'Purity', 'Number of IDs', 'N_a', 'recall','precision', 'idp', 'idr', 'idf1',
                                     'mota', 'motp']])
