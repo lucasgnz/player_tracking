@@ -13,6 +13,9 @@ from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
+from sklearn.preprocessing import normalize
+
+
 import warnings
 
 import time as t
@@ -65,6 +68,7 @@ def gather_sequence_info(sequence_dir, detection_file,offset, n_frames, visualiz
     if detection_file is not None:
         ext = detection_file.split(".")[-1]
         detections = np.load(detection_file) if ext=='npy' else np.loadtxt(detection_file, delimiter=',')
+        detections[:, 10:] = normalize(detections[:, 10:])
 
 
     groundtruth = None

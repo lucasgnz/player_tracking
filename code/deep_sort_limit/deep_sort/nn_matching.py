@@ -107,7 +107,7 @@ def _cosine_distance_custom(x, y, alpha=0.0):
     """
     distances = _cosine_distance(x, y)
     n = len(x)
-    mean_decay = [n-k for k in range(n)]
+    mean_decay = [1 for k in range(n)]
     mean_decay /= np.sum(mean_decay)
     #return np.dot(distances.T, mean_decay) ** alpha * distances.min(axis=0) ** (1 - alpha)
     return np.dot(distances.T,mean_decay)*alpha + distances.min(axis=0)*(1-alpha)
